@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Smart Response Network // Ops Command</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="ops-header">
+    <div class="brand-section">
+      <div class="brand-logo-icon">
+        <div class="pulse-beacon"></div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div class="brand-title-wrap">
+        <h1>Smart Emergency Response Network</h1>
+        <div class="brand-subtitle">CENTRAL DISPATCH &amp; IOT INGESTION PLATFORM // ESP32 GRID</div>
+      </div>
+    </div>
+
+    <div class="header-status-indicator">
+      <div class="status-dot" id="systemStatusDot"></div>
+      <span id="systemStatusText">NOMINAL READY</span>
+      <span style="color: var(--text-dim);">|</span>
+      <span id="liveClock" style="color: #60a5fa;">00:00:00 UTC</span>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btnAudioToggle" title="Toggle audio alarms">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+        </svg>
+        <span id="audioStatusText">Sound On</span>
+      </button>
+
+      <button class="btn btn-accent btn-sm" id="btnOpenSimulator">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        ESP32 Ingestion Simulator
+      </button>
+
+      <button class="btn btn-secondary btn-sm" id="btnOpenFleet">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="2"></circle>
+          <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+        </svg>
+        Device Fleet
+      </button>
+
+      <button class="btn btn-secondary btn-sm" id="btnOpenFirmware">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+        ESP32 Code
+      </button>
+
+      <button class="btn btn-primary btn-sm" id="btnOpenNewIncident">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Manual Dispatch
+      </button>
+
+      <button class="btn btn-secondary btn-sm" id="btnSeedData" title="Seed or reset initial demo records">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+        </svg>
+        Demo Seed
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats Ribbon -->
+  <section class="stats-bar">
+    <div class="stat-card" style="--stat-accent: var(--accent-red);">
+      <div class="stat-label">Active Emergencies</div>
+      <div class="stat-value" id="statActiveIncidents">0</div>
+      <div class="stat-sub" id="statCriticalSub">0 Critical Triage</div>
+    </div>
+    <div class="stat-card" style="--stat-accent: var(--accent-emerald);">
+      <div class="stat-label">ESP32 Grid Nodes</div>
+      <div class="stat-value" id="statOnlineDevices">0</div>
+      <div class="stat-sub" id="statAlertingSub">0 In Distress</div>
+    </div>
+    <div class="stat-card" style="--stat-accent: var(--accent-cyan);">
+      <div class="stat-label">Units Dispatched</div>
+      <div class="stat-value" id="statDispatchedUnits">0</div>
+      <div class="stat-sub">Emergency Responders En Route</div>
+    </div>
+    <div class="stat-card" style="--stat-accent: var(--accent-amber);">
+      <div class="stat-label">Resolved Today</div>
+      <div class="stat-value" id="statResolvedCount">0</div>
+      <div class="stat-sub">Archived Incidents</div>
+    </div>
+  </section>
+
+  <!-- Main Grid -->
+  <main class="ops-main">
+    <!-- Left Column: Incidents Queue -->
+    <div class="ops-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Emergency Incident Queue &amp; Triage
+        </div>
+        <div class="panel-controls">
+          <button class="btn btn-secondary btn-sm" id="btnRefreshIncidents">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-toolbar">
+        <div class="filter-group" id="statusFilterGroup">
+          <button class="filter-pill active" data-filter="active">Active Only</button>
+          <button class="filter-pill" data-filter="all">All Incidents</button>
+          <button class="filter-pill" data-filter="reported">Pending Triage</button>
+          <button class="filter-pill" data-filter="dispatched">Dispatched</button>
+          <button class="filter-pill" data-filter="resolved">Resolved</button>
+        </div>
+        <input type="text" class="search-input" id="searchIncidentsInput" placeholder="Filter ID, unit, location...">
+      </div>
+
+      <!-- Incident cards list -->
+      <div class="incidents-container" id="incidentsList">
+        <div class="empty-state">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Loading live emergency queue...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Tactical Radar & Telemetry Stream -->
+    <div class="right-column">
+      <!-- Radar Map -->
+      <div class="tactical-map-card">
+        <div class="radar-header">
+          <span>TACTICAL GRID // GEOLOCATION RADAR</span>
+          <span style="color: var(--accent-cyan);" id="radarNodesCount">0 NODES PLOTTED</span>
+        </div>
+        <div class="radar-viewport" id="radarViewport">
+          <!-- Background SVG grid -->
+          <svg class="radar-grid-svg" viewBox="0 0 400 300" preserveAspectRatio="none">
+            <defs>
+              <pattern id="radarGridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(36, 50, 77, 0.4)" stroke-width="0.7"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#radarGridPattern)" />
+            <!-- Concentric range rings -->
+            <circle cx="200" cy="150" r="45" fill="none" stroke="rgba(6, 182, 212, 0.15)" stroke-width="1" stroke-dasharray="4 4" />
+            <circle cx="200" cy="150" r="90" fill="none" stroke="rgba(6, 182, 212, 0.2)" stroke-width="1" />
+            <circle cx="200" cy="150" r="135" fill="none" stroke="rgba(6, 182, 212, 0.15)" stroke-width="1" stroke-dasharray="4 4" />
+            <!-- Crosshairs -->
+            <line x1="200" y1="0" x2="200" y2="300" stroke="rgba(6, 182, 212, 0.2)" stroke-width="1" />
+            <line x1="0" y1="150" x2="400" y2="150" stroke="rgba(6, 182, 212, 0.2)" stroke-width="1" />
+            <!-- Sector Labels -->
+            <text x="210" y="25" fill="#475569" font-size="10" font-family="monospace">SECTOR NORTH</text>
+            <text x="210" y="290" fill="#475569" font-size="10" font-family="monospace">SECTOR SOUTH</text>
+            <text x="15" y="145" fill="#475569" font-size="10" font-family="monospace">WEST ZONE</text>
+            <text x="325" y="145" fill="#475569" font-size="10" font-family="monospace">EAST ZONE</text>
+          </svg>
+
+          <!-- Radar sweep beam -->
+          <div class="radar-sweep-beam"></div>
+
+          <!-- Dynamic Blips Container -->
+          <div id="radarBlipsContainer"></div>
+        </div>
+      </div>
+
+      <!-- Telemetry Feed -->
+      <div class="telemetry-ticker-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Edge Node Ingestion Stream (POST /api/telemetry)
+          </div>
+          <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #67e8f9;">LIVE FEED</span>
+        </div>
+        <div class="telemetry-feed" id="telemetryFeedContainer">
+          <div class="empty-state">
+            <span>Listening for incoming telemetry packets...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL 1: ESP32 Ingestion Simulator -->
+  <div class="modal-backdrop" id="simulatorModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-amber)" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          ESP32 Hardware Telemetry Simulator
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('simulatorModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.82rem; color: var(--text-muted);">
+          Simulate an autonomous ESP32 hardware node transmitting an encrypted telemetry payload or distress trigger to this deployed Netlify endpoint.
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ESP32 Device Identifier</label>
+            <select class="form-select" id="simDeviceId">
+              <option value="ESP32-SOS-01">ESP32-SOS-01 (Civic Square Beacon)</option>
+              <option value="ESP32-FIRE-02">ESP32-FIRE-02 (West Substation Sentinel)</option>
+              <option value="ESP32-CRASH-03">ESP32-CRASH-03 (Highway M1 Overpass)</option>
+              <option value="ESP32-AMB-04">ESP32-AMB-04 (EMS Mobile Unit)</option>
+              <option value="ESP32-NEW-CUSTOM">Create Custom Device ID...</option>
+            </select>
+          </div>
+          <div class="form-group" id="simCustomDeviceGroup" style="display: none;">
+            <label class="form-label">Custom Device ID</label>
+            <input type="text" class="form-input" id="simCustomDeviceId" placeholder="e.g. ESP32-RESCUE-09">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Trigger Type</label>
+            <select class="form-select" id="simEventType">
+              <option value="panic_alarm">Physical Panic Button (SOS Trigger)</option>
+              <option value="smoke_detected">Thermal / Smoke Early Warning Sensor</option>
+              <option value="collision_impact">G-Force Vehicle Collision Impact</option>
+              <option value="heartbeat">Routine Sensor Heartbeat Ping</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Incident / Alert Title</label>
+          <input type="text" class="form-input" id="simTitle" value="Physical SOS Panic Button Triggered">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Incident Description / Sensor Diagnostics</label>
+          <textarea class="form-textarea" id="simDescription" rows="2">Emergency SOS switch depressed continuously for >3000ms. Beacon optical strobe activated.</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Location Address / Area</label>
+            <input type="text" class="form-input" id="simLocation" value="Civic Square Pedestrian Plaza">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Triage Priority</label>
+            <select class="form-select" id="simPriority">
+              <option value="critical" selected>Critical Priority (Code Red)</option>
+              <option value="high">High Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="low">Low Priority</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">GPS Latitude</label>
+            <input type="text" class="form-input" id="simLat" value="-26.2041">
+          </div>
+          <div class="form-group">
+            <label class="form-label">GPS Longitude</label>
+            <input type="text" class="form-input" id="simLon" value="28.0473">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Simulated Battery %</label>
+            <input type="number" class="form-input" id="simBattery" min="1" max="100" value="88">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Signal RSSI (dBm)</label>
+            <input type="number" class="form-input" id="simRssi" min="-110" max="-30" value="-58">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('simulatorModal')">Cancel</button>
+        <button class="btn btn-primary" id="btnSendSimulatedTelemetry">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Transmit Telemetry to Netlify API
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Manual Incident Dispatch Ticket -->
+  <div class="modal-backdrop" id="newIncidentModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          Log Manual Emergency Dispatch
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('newIncidentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Incident Title</label>
+          <input type="text" class="form-input" id="newIncTitle" placeholder="e.g. Structure Fire Reported / Highway Multi-Vehicle Collision">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="newIncCategory">
+              <option value="medical">Medical Emergency</option>
+              <option value="fire">Fire &amp; Hazardous Materials</option>
+              <option value="sos_panic">Civilian Distress / SOS Panic</option>
+              <option value="crash">Traffic Collision</option>
+              <option value="security">Security / Police Alert</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="newIncPriority">
+              <option value="critical">Critical (Immediate Dispatch)</option>
+              <option value="high" selected>High Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="low">Low Priority</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Location Address</label>
+          <input type="text" class="form-input" id="newIncAddress" placeholder="e.g. 104 Commissioner St, West Wing">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Incident Description &amp; Situation Report</label>
+          <textarea class="form-textarea" id="newIncDesc" rows="3" placeholder="Provide situational details, hazards, patient count..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assign Immediate Responder Unit</label>
+            <input type="text" class="form-input" id="newIncUnit" placeholder="e.g. EMS Alpha-2 / Engine Squad 7">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Caller Name / Contact Number</label>
+            <input type="text" class="form-input" id="newIncContact" placeholder="e.g. Dispatcher J. Smith (+27...)">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('newIncidentModal')">Cancel</button>
+        <button class="btn btn-primary" id="btnSubmitNewIncident">Create &amp; Dispatch Ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Incident Details & Action Modal -->
+  <div class="modal-backdrop" id="incidentDetailModal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title" id="detailModalTitle">Incident Overview</div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('incidentDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="detailModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Device Fleet Registry -->
+  <div class="modal-backdrop" id="fleetModal">
+    <div class="modal-window" style="max-width: 800px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+            <circle cx="12" cy="12" r="2"></circle>
+            <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+          </svg>
+          Registered ESP32 Edge Device Fleet
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('fleetModal')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 0;">
+        <table class="fleet-table">
+          <thead>
+            <tr>
+              <th>DEVICE ID</th>
+              <th>NAME &amp; LOCATION</th>
+              <th>TYPE</th>
+              <th>STATUS</th>
+              <th>BATTERY</th>
+              <th>RSSI</th>
+              <th>LAST PING</th>
+            </tr>
+          </thead>
+          <tbody id="fleetTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">
+                Loading registered devices...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('fleetModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: ESP32 Firmware Guide -->
+  <div class="modal-backdrop" id="firmwareModal">
+    <div class="modal-window" style="max-width: 780px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          ESP32 Arduino C++ Firmware (PlatformIO)
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('firmwareModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.82rem; color: var(--text-muted);">
+          This complete Arduino/C++ firmware is ready for the ESP32 in this repository. It connects to Wi-Fi, monitors physical panic pushbuttons (GPIO0/GPIO4) with hardware debounce, and transmits JSON telemetry directly to your deployed Netlify endpoint <code>/api/telemetry</code>.
+        </p>
+        <div class="code-preview-block" id="firmwareCodeDisplay"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-accent btn-sm" id="btnCopyFirmwareCode">Copy C++ Code</button>
+        <button class="btn btn-secondary" onclick="closeModal('firmwareModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
